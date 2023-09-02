@@ -46,23 +46,20 @@ int main(int argc, char **argv)
 	}
 
 	/* Printing mapped read data*/
-	printf("Device     Boot    Start      Sectors  Id \n");
+	printf("Device  \tBoot  \tStart     \tSectors  \tId \n");
 	for (int i = 0; i < 4; i++)
 	{
 		if (mymbr->partition_entries[i].start_sector == 0)
 			continue;
 
-		printf("%s%d %-5d %u %u %x\n",
+		printf("%s%d  \t%-5d  \t%u      \t%u  \t%x\n",
 			   argv[1],
 			   i + 1,
 			   (mymbr->partition_entries[i].status == 0x80) ? 1 : 0,
 			   mymbr->partition_entries[i].start_sector,
 			   mymbr->partition_entries[i].num_sectors,
 			   mymbr->partition_entries[i].type);
-	}
 
-	for (int i = 0; i < 4; i++)
-	{
 		uint8_t buf[512];
 
 		if (mymbr->partition_entries[i].type == 0x5)
@@ -91,27 +88,26 @@ int main(int argc, char **argv)
 			}
 
 			Mbr *current_Ebr = Ebr;
+			unsigned char extendedLogcialCounter = 0; /* Just to hold value of logical partition counter*/
 
 			while (current_Ebr->partition_entries[1].start_sector != 0)
 			{
+				extendedLogcialCounter++; /* Increasing Logical partition counter*/
+										  /* Printing data of this Ebr*/
 
-				/* Printing data of this Ebr*/
-
-				printf("%s %-5d %u %u %x\n",
+				printf("%s%d  \t%-5d  \t%lu      \t%u  \t%x\n",
 					   argv[1],
+					   (i * 4) + extendedLogcialCounter,
 					   (current_Ebr->partition_entries[0].status == 0x80) ? 1 : 0,
-					   current_Ebr->partition_entries[0].start_sector,
+					   current_Ebr->partition_entries[0].start_sector+extended_partition_start_sector,
 					   current_Ebr->partition_entries[0].num_sectors,
 					   current_Ebr->partition_entries[0].type);
 
 				/* Calculating the offset for the next Ebr*/
 				off_t nextEbr_offset = (off_t)(extended_partition_start_sector + current_Ebr->partition_entries[1].start_sector) * 512;
 
-				printf("extended partition start sector %d\n", extended_partition_start_sector);
-				printf("second entry start sectro %d\n", current_Ebr->partition_entries[1].start_sector);
-				printf("NextEbr sector is %ld\n", (off_t)(extended_partition_start_sector + current_Ebr->partition_entries[1].start_sector));
 				/* seek opened file to the location of first Ebr of the first logical partition*/
-				lseek(fd, (off_t)nextEbr_offset * 512, SEEK_SET);
+				lseek(fd, (off_t)nextEbr_offset, SEEK_SET);
 
 				/* Reading 512 bytes of first Ebr*/
 				n = read(fd, buf, 512);
@@ -124,10 +120,13 @@ int main(int argc, char **argv)
 				current_Ebr = (Mbr *)buf;
 			}
 
-			printf("%s %-5d %u %u %x\n",
+			printf("%s%d  \t%-5d  \t%lu      \t%u  \t%x\n",
 				   argv[1],
-				   (current_Ebr->partition_entries[0].status == 0x80) ? 1 : 0,
-				   current_Ebr->partition_entries[0].start_sector,
+				   (i * 4) + extendedLogcialCounter + 1,
+				   (current_Ebr->partition_entries[0].status == 0x80)
+					   ? 1
+					   : 0,
+				   current_Ebr->partition_entries[0].start_sector+extended_partition_start_sector,
 				   current_Ebr->partition_entries[0].num_sectors,
 				   current_Ebr->partition_entries[0].type);
 		}
